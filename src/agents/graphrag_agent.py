@@ -58,9 +58,10 @@ async def azure_openai_llm_generation(
         chat_completion = client.chat.completions.create(
             model=deployment,
             messages=messages,
-            temperature=kwargs.get("temperature", 0),
+            temperature=kwargs.get("temperature", 0) if "gpt-5" not in deployment else 1,
             top_p=kwargs.get("top_p", 1),
             n=kwargs.get("n", 1),
+            reasoning_effort="minimal" if "gpt-5" in deployment else None
         )
         
         result = chat_completion.choices[0].message.content
@@ -167,7 +168,7 @@ async def insert_pdf_documents_to_graphrag(rag, directory_path):
                 pdf_content = await extract_pdf_with_mistral_ocr(pdf_file)
                 if pdf_content:
                     logger.info(f"Inserting document into RAG: {os.path.basename(pdf_file)}")
-                    await rag.ainsert([pdf_content], file_paths=[pdf_file])
+                    await rag.ainsert([pdf_content], file_paths=[pdf_file], ids=[pdf_file])
                     successful_insertions += 1
                     logger.info(f"Successfully inserted: {os.path.basename(pdf_file)}")
                 else:
