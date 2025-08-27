@@ -61,7 +61,7 @@ async def azure_openai_llm_generation(
             temperature=kwargs.get("temperature", 0) if "gpt-5" not in deployment else 1,
             top_p=kwargs.get("top_p", 1),
             n=kwargs.get("n", 1),
-            reasoning_effort="minimal" if "gpt-5" in deployment else None
+            # reasoning_effort="minimal" if "gpt-5" in deployment else None
         )
         
         result = chat_completion.choices[0].message.content
@@ -120,7 +120,7 @@ async def initialize_graphrag_with_postgresql():
             llm_model_func=azure_openai_llm_generation,
             embedding_func=EmbeddingFunc(
                 embedding_dim=int(embedding_dim),
-                max_token_size=16384,
+                max_token_size=8192,
                 func=azure_openai_embedding_generation,
             ),
             kv_storage="PGKVStorage",
