@@ -168,7 +168,7 @@ async def insert_pdf_documents_to_graphrag(rag, directory_path):
                 pdf_content = await extract_pdf_with_mistral_ocr(pdf_file)
                 if pdf_content:
                     logger.info(f"Inserting document into RAG: {os.path.basename(pdf_file)}")
-                    await rag.ainsert([pdf_content], file_paths=[pdf_file], ids=[pdf_file])
+                    await rag.ainsert([pdf_content], file_paths=[pdf_file])#, ids=[pdf_file])
                     successful_insertions += 1
                     logger.info(f"Successfully inserted: {os.path.basename(pdf_file)}")
                 else:
