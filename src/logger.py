@@ -7,7 +7,7 @@ from datetime import datetime
 # Main Logger Setup
 # ===============================
 
-def setup_application_logger(name: str = __name__, log_level: str = "INFO") -> logging.Logger:
+def setup_application_logger(name: str = __name__, log_level: str = "DEBUG") -> logging.Logger:
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)
     

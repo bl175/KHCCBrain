@@ -27,6 +27,7 @@ if not os.path.exists(WORKING_DIR):
     os.mkdir(WORKING_DIR)
     logger.info(f"Created working directory: {WORKING_DIR}")
 
+
 # ===============================
 # Azure OpenAI Functions
 # ===============================
@@ -166,8 +167,24 @@ async def insert_pdf_documents_to_graphrag(rag, directory_path):
        csv_file = "/home/bl175/Desktop/Test/policies/pdf_processing_status.csv"
        csv_exists = os.path.exists(csv_file)
        
+       processed_files = set()
+       if csv_exists:
+           with open(csv_file, "r", newline="") as f:
+               reader = csv.DictReader(f)
+               for row in reader:
+                   if row.get("status") == "success":
+                       processed_files.add(row.get("file_name"))
+       
+       files_to_process = [pdf_file for pdf_file in pdf_files if os.path.basename(pdf_file) not in processed_files]
+       
+       if not files_to_process:
+           logger.info("All PDF files have already been processed successfully")
+           return True
+       
+       logger.info(f"Processing {len(files_to_process)} new PDF files (skipping {len(pdf_files) - len(files_to_process)} already processed)")
+       
        successful_insertions = 0
-       for pdf_file in pdf_files:
+       for pdf_file in files_to_process:
            file_name = os.path.basename(pdf_file)
            formatted_name = os.path.splitext(file_name)[0].replace(" ", "_")
            status = "failed"
@@ -178,7 +195,7 @@ async def insert_pdf_documents_to_graphrag(rag, directory_path):
                pdf_content = await extract_pdf_with_mistral_ocr(pdf_file)
                if pdf_content:
                    logger.info(f"Inserting document into RAG: {file_name}")
-                   await rag.ainsert([pdf_content], file_paths=[formatted_name], ids=[formatted_name])
+                   await rag.ainsert([pdf_content], file_paths=[formatted_name])
                    successful_insertions += 1
                    status = "success"
                    logger.info(f"Successfully inserted: {file_name}")
@@ -195,7 +212,7 @@ async def insert_pdf_documents_to_graphrag(rag, directory_path):
                    csv_exists = True
                writer.writerow([file_name, formatted_name, status, datetime.now().isoformat()])
        
-       logger.info(f"Successfully inserted {successful_insertions}/{len(pdf_files)} documents")
+       logger.info(f"Successfully inserted {successful_insertions}/{len(files_to_process)} documents")
        return successful_insertions > 0
        
    except Exception as e:
