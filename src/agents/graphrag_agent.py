@@ -7,6 +7,7 @@ import numpy as np
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from lightrag.kg.shared_storage import initialize_pipeline_status
+from datetime import datetime
 import nest_asyncio
 from ..logger import setup_application_logger
 from ..utils.doc_utils import extract_pdf_with_mistral_ocr
@@ -145,45 +146,61 @@ async def initialize_graphrag_with_postgresql():
 # ===============================
 
 async def insert_pdf_documents_to_graphrag(rag, directory_path):
-    try:
-        logger.info(f"Processing PDF documents from directory: {directory_path}")
-        
-        if not os.path.exists(directory_path):
-            logger.error(f"Directory does not exist: {directory_path}")
-            return False
-        
-        pdf_files = glob.glob(os.path.join(directory_path, "*.pdf"))
-        
-        if not pdf_files:
-            logger.warning(f"No PDF files found in directory: {directory_path}")
-            return False
-        
-        logger.info(f"Found {len(pdf_files)} PDF files to process")
-        
-        successful_insertions = 0
-        for pdf_file in pdf_files:
-            try:
-                logger.info(f"Processing document: {os.path.basename(pdf_file)}")
-                
-                pdf_content = await extract_pdf_with_mistral_ocr(pdf_file)
-                if pdf_content:
-                    logger.info(f"Inserting document into RAG: {os.path.basename(pdf_file)}")
-                    await rag.ainsert([pdf_content], file_paths=[pdf_file])#, ids=[pdf_file])
-                    successful_insertions += 1
-                    logger.info(f"Successfully inserted: {os.path.basename(pdf_file)}")
-                else:
-                    logger.error(f"Failed to extract content from: {os.path.basename(pdf_file)}")
-                    
-            except Exception as e:
-                logger.error(f"Error processing {os.path.basename(pdf_file)}: {str(e)}")
-                continue
-        
-        logger.info(f"Successfully inserted {successful_insertions}/{len(pdf_files)} documents")
-        return successful_insertions > 0
-        
-    except Exception as e:
-        logger.error(f"Error processing directory {directory_path}: {str(e)}")
-        return False
+   import csv
+   
+   try:
+       logger.info(f"Processing PDF documents from directory: {directory_path}")
+       
+       if not os.path.exists(directory_path):
+           logger.error(f"Directory does not exist: {directory_path}")
+           return False
+       
+       pdf_files = glob.glob(os.path.join(directory_path, "*.pdf"))
+       
+       if not pdf_files:
+           logger.warning(f"No PDF files found in directory: {directory_path}")
+           return False
+       
+       logger.info(f"Found {len(pdf_files)} PDF files to process")
+       
+       csv_file = "/home/bl175/Desktop/Test/policies/pdf_processing_status.csv"
+       csv_exists = os.path.exists(csv_file)
+       
+       successful_insertions = 0
+       for pdf_file in pdf_files:
+           file_name = os.path.basename(pdf_file)
+           formatted_name = os.path.splitext(file_name)[0].replace(" ", "_")
+           status = "failed"
+           
+           try:
+               logger.info(f"Processing document: {file_name}")
+               
+               pdf_content = await extract_pdf_with_mistral_ocr(pdf_file)
+               if pdf_content:
+                   logger.info(f"Inserting document into RAG: {file_name}")
+                   await rag.ainsert([pdf_content], file_paths=[formatted_name], ids=[formatted_name])
+                   successful_insertions += 1
+                   status = "success"
+                   logger.info(f"Successfully inserted: {file_name}")
+               else:
+                   logger.error(f"Failed to extract content from: {file_name}")
+                   
+           except Exception as e:
+               logger.error(f"Error processing {file_name}: {str(e)}")
+           
+           with open(csv_file, "a", newline="") as f:
+               writer = csv.writer(f)
+               if not csv_exists:
+                   writer.writerow(["file_name", "formatted_name", "status", "timestamp"])
+                   csv_exists = True
+               writer.writerow([file_name, formatted_name, status, datetime.now().isoformat()])
+       
+       logger.info(f"Successfully inserted {successful_insertions}/{len(pdf_files)} documents")
+       return successful_insertions > 0
+       
+   except Exception as e:
+       logger.error(f"Error processing directory {directory_path}: {str(e)}")
+       return False
 
 
 # ===============================
